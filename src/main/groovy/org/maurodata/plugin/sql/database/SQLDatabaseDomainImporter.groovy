@@ -169,7 +169,7 @@ class SQLDatabaseDomainImporter {
 
         List<Map<String, Object>> columnResults = queryForColumns(connection, databaseName, importParams.schemaNames as List<String>, importParams.excludeSchemaNames as List<String>, importParams.excludeTablesLike as List<String>, importParams.includeTablesLike as List<String>)
 
-        connection.close();
+        connection.close()
 
         log.debug("columnResults ${columnResults.toString()}")
 
@@ -540,7 +540,7 @@ class SQLDatabaseDomainImporter {
                 queryComponents.addAll(
                     dataElements.findAll {!isLOB(it) }.collect
                         { DataElement it ->
-                            String columnName = originalDatabaseIdentifiers.get(it);
+                            String columnName = originalDatabaseIdentifiers.get(it)
                             databaseDomain.valueExpressionAsLabel(
                             databaseDomain.countWhere(columnName,
                                                       "${databaseDomain.escapeIdentifier(columnName)} IS NOT NULL " +
@@ -577,7 +577,7 @@ class SQLDatabaseDomainImporter {
         addMetadata(tableClass, new Metadata(namespace: databaseDomain.getNAMESPACE(), key: 'row_count', value: counts['__count_all']))
         dataElements.each {DataElement dataElement ->
             synchronized (originalDatabaseIdentifiers) {
-                String columnName = originalDatabaseIdentifiers.get(dataElement);
+                String columnName = originalDatabaseIdentifiers.get(dataElement)
                 addMetadata(dataElement, new Metadata(namespace: databaseDomain.getNAMESPACE(), key: 'distinct_values_count', value: counts[columnName.toLowerCase()]))
                 addMetadata(dataElement, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'distinctValuesCount', value: counts[columnName.toLowerCase()]))
                 addMetadata(dataElement, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'rowCount', value: counts['__count_all']))
@@ -586,7 +586,7 @@ class SQLDatabaseDomainImporter {
         }
         dataElements.findAll {isDateOrTime(it) || isNumeric(it)}.each {DataElement dataElement ->
             synchronized (originalDatabaseIdentifiers) {
-                String columnName = originalDatabaseIdentifiers.get(dataElement);
+                String columnName = originalDatabaseIdentifiers.get(dataElement)
                 final String[] min_max = new String[]{"min", "max"}
                 for (String func : min_max) {
                     final Object funcVal = counts[(columnName.toLowerCase() + '_' + func)]

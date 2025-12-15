@@ -583,7 +583,7 @@ FROM dual
         return "\"${name.replace('\"', '\"\"')}\""
     }
 
-    String escapeString(final String string){
+    static String escapeString(final String string){
         return "q'[${string}]'"
     }
 
