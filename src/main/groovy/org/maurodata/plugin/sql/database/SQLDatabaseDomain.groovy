@@ -21,6 +21,10 @@ abstract class SQLDatabaseDomain {
         100
     }
 
+    int getWARN_ENUMERATION_TYPE() {
+        1000
+    }
+
     long getSUMMARY_METADATA_FLOOR() {
         0L
     }
@@ -58,6 +62,9 @@ abstract class SQLDatabaseDomain {
 
     abstract String queryForSummaryMetadataForEnumerations(String catalogName, String schemaName, String tableName, String columnName, String codeValue, String count,
                                                            long MAX_ENUMERATION_VALUES)
+
+    abstract String queryForSummaryMetadataForDateCenturies(String intervalLabel, String count, String century, String catalogName, String schemaName, String tableName,
+                                                          String asLabel)
 
     abstract String queryForSummaryMetadataForDateDecades(String intervalLabel, String count, String decade, String catalogName, String schemaName, String tableName,
                                                           String asLabel)
@@ -117,6 +124,8 @@ abstract class SQLDatabaseDomain {
     abstract String greatest(final String a, final String b)
 
     abstract String normaliseEnumerationValueSql(String valueExpression)
+
+    abstract String centuryFromDate(String columnName)
 
     abstract String decadeFromDate(String columnName)
 

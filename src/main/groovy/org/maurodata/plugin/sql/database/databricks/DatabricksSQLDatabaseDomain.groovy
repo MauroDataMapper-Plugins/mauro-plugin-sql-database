@@ -195,7 +195,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
     String queryForEnumerationValues(String catalogName, String schemaName, String tableName, String columnName, String codeValue, String description, long MAX_ENUMERATION_VALUES){
         valueExpressionAsLabel("""
                 (
-                    select map_from_entries(array_agg(struct(code_value, description)))
+                    select to_json(map_from_entries(array_agg(struct(code_value, description))))
                     from
                     (
                         select distinct
@@ -231,6 +231,27 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
         """,
         columnName
         )
+    }
+
+    String queryForSummaryMetadataForDateCenturies(String intervalLabel, String count, String century, String catalogName, String schemaName, String tableName, String asLabel){
+        valueExpressionAsLabel("""
+            (
+                SELECT to_json( map_from_entries( sort_array( array_agg( struct( ${intervalLabel}, ${count} ) ) ) ) )
+                FROM
+                (
+                    SELECT decade, count(*) count
+                    FROM
+                    (
+                        SELECT ${century} century
+                        FROM ${escapeIdentifier(catalogName)}.${escapeIdentifier(schemaName)}.${escapeIdentifier(tableName)}
+                    )
+                    WHERE century IS NOT NULL
+                    GROUP BY century
+                    ORDER BY century
+                )
+            )
+            """,
+            asLabel)
     }
 
     String queryForSummaryMetadataForDateDecades(String intervalLabel, String count, String decade, String catalogName, String schemaName, String tableName, String asLabel){
@@ -388,6 +409,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
         "replace(nvl(nullif(nvl(translate(trim(substr(${valueExpression}, 1, ${MAX_ENUMERATION_VALUE_LENGTH})), '@|\$\\0', '���'), '<null>'), ''), '<blank>'), '\\\\', '\\\\\\\\')"
     }
 
+    String centuryFromDate(String columnName){"floor(extract(year from ${escapeIdentifier(columnName)})/100)*100"}
     String decadeFromDate(String columnName){"floor(extract(year from ${escapeIdentifier(columnName)})/10)*10"}
     String yearFromDate(String columnName){"extract(year from ${escapeIdentifier(columnName)})"}
     String monthFromDate(String columnName){"extract(month from ${escapeIdentifier(columnName)})"}

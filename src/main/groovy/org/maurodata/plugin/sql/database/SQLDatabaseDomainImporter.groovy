@@ -202,6 +202,8 @@ class SQLDatabaseDomainImporter {
                     parentClass.dataElements << dataElement
                 }
                 log.info "catalog: [${columnMap.table_catalog}], schema: [${columnMap.table_schema}], table: [${columnMap.table_name}], column: [${columnMap.column_name}]"
+            } else {
+                log.error 'error importing DataElement: parentClass is null for {} in dataModel {}', dataElement.label, parentDataModel.label
             }
         }
         log.info "${columnResults.table_schema.unique().size()} schemas, ${columnResults.collect {new Tuple2(it.table_schema, it.table_name)}.unique().size()} tables, ${columnResults.size()} columns"
@@ -261,6 +263,7 @@ class SQLDatabaseDomainImporter {
                         importEnumerationValues(threadConnection, it)
                     } catch (Exception exception) {
                         //exception.printStackTrace()
+                        log.error 'Error importing enumerations for table {}, elements {}', tableDataClass.label, it.enumerationColumns.label.join(',')
                         log.error exception.message
                     }
                 }
@@ -639,7 +642,7 @@ class SQLDatabaseDomainImporter {
                 isEnumerationColumn = false
             }
 
-            // If the level of nulls is large, ignore this as an enumeration
+            // If the level of nulls is large, or the values are too distinct, ignore this as an enumeration
 
             Metadata notNullValuesCountMetadata=column.metadata.find {it.key == 'notNullValuesCount'}
             Metadata rowCountMetadata=column.metadata.find {it.key == 'rowCount'}
@@ -652,7 +655,7 @@ class SQLDatabaseDomainImporter {
                 if(notNullValuesCount == 0)
                 {
                     isEnumerationColumn = false
-                    log.warn(tableClass.label+"."+column.label+" is all null")
+                    log.warn('excluding {}.{} as enumeration, column is all null', tableClass.label, column.label)
                 }
                 else {
                     double rowFraction = notNullValuesCount / rowCount
@@ -660,7 +663,11 @@ class SQLDatabaseDomainImporter {
 
                     if (rowFraction< valueFraction) {
                         isEnumerationColumn = false
-                        log.warn(tableClass.label+"."+column.label+" is mostly null")
+                        log.warn('excluding {}.{} as enumeration, column is mostly null', tableClass.label, column.label)
+                    }
+                    else if(notNullValuesCount < 3 * distinctValuesIncludingNull) {
+                        isEnumerationColumn = false
+                        log.warn('excluding {}.{} as enumeration, values are too distinct', tableClass.label, column.label)
                     }
                 }
             }
@@ -790,6 +797,10 @@ class SQLDatabaseDomainImporter {
                     }
                 } else {
                     log.warn "Skipping EnumerationType [$enumerationType.label] because keys are not unique"
+                }
+
+                if (enumerationType.enumerationValues.key.size() > databaseDomain.WARN_ENUMERATION_TYPE) {
+                    log.warn "Large EnumerationType! [$enumerationType.label] contains more than ${databaseDomain.WARN_ENUMERATION_TYPE} values"
                 }
             } else {
                 synchronized (column)
@@ -1106,10 +1117,22 @@ class SQLDatabaseDomainImporter {
                                 LocalDate maxDate = parseISO_LOCAL_DATE(maxValue)
                                 long days = ChronoUnit.DAYS.between(minDate, maxDate)
 
+                                if (days > 70000) {
+                                    // group by decades
+                                    databaseDomain.queryForSummaryMetadataForDateCenturies(
+                                        databaseDomain.concat([databaseDomain.escapeIdentifier('century'),"'-'","${databaseDomain.escapeIdentifier('century')} + 99"]),
+                                        databaseDomain.greatest('count',"${databaseDomain.getSUMMARY_METADATA_FLOOR()}"),
+                                        databaseDomain.centuryFromDate(originalDatabaseIdentifiers.get(dataElement)),
+                                        catalogName,
+                                        schemaName,
+                                        originalDatabaseIdentifiers.get(tableClass),
+                                        originalDatabaseIdentifiers.get(dataElement)
+                                    )
+                                } else
                                 if (days > 7000) {
                                     // group by decades
                                     databaseDomain.queryForSummaryMetadataForDateDecades(
-                                        databaseDomain.concat([databaseDomain.escapeIdentifier('decade'),"'-'","${databaseDomain.escapeIdentifier('decade')}+9"]),
+                                        databaseDomain.concat([databaseDomain.escapeIdentifier('decade'),"'-'","${databaseDomain.escapeIdentifier('decade')} + 9"]),
                                         databaseDomain.greatest('count',"${databaseDomain.getSUMMARY_METADATA_FLOOR()}"),
                                         databaseDomain.decadeFromDate(originalDatabaseIdentifiers.get(dataElement)),
                                         catalogName,

@@ -257,6 +257,42 @@ ORDER BY (SELECT NULL)
         )
     }
 
+    String queryForSummaryMetadataForDateCenturies(String intervalLabel, String count, String century, String catalogName, String schemaName, String tableName, String asLabel){
+        valueExpressionAsLabel("""
+            (
+                SELECT CAST( STRING_AGG(json_row, CHAR(10)) WITHIN GROUP (ORDER BY century) AS NVARCHAR(MAX) )
+                FROM
+                (
+                    SELECT
+                        CAST( (SELECT i AS [interval], c AS [count] FOR JSON PATH, WITHOUT_ARRAY_WRAPPER ) AS NVARCHAR(MAX)) AS json_row,
+                        century
+                    FROM
+                    (
+                        SELECT
+                            ${intervalLabel} AS i,
+                            ${count} AS c,
+                            century
+                        FROM
+                        (
+                            SELECT
+                                century,
+                                count(*) count
+                            FROM
+                            (
+                                SELECT ${century} AS century
+                                FROM ${escapeIdentifier(catalogName)}.${escapeIdentifier(schemaName)}.${escapeIdentifier(tableName)}
+                            ) AS x
+                            WHERE century IS NOT NULL
+                            GROUP BY century
+                        ) AS z
+                    ) AS d
+                ) AS t
+            )
+            """,
+            asLabel)
+    }
+
+
     String queryForSummaryMetadataForDateDecades(String intervalLabel, String count, String decade, String catalogName, String schemaName, String tableName, String asLabel){
         valueExpressionAsLabel("""
             (
@@ -491,6 +527,7 @@ ORDER BY (SELECT NULL)
 """
     }
 
+    String centuryFromDate(String columnName){"floor(YEAR(${escapeIdentifier(columnName)})/100)*100"}
     String decadeFromDate(String columnName){"floor(YEAR(${escapeIdentifier(columnName)})/10)*10"}
     String yearFromDate(String columnName){"YEAR(${escapeIdentifier(columnName)})"}
     String monthFromDate(String columnName){"MONTH(${escapeIdentifier(columnName)})"}
