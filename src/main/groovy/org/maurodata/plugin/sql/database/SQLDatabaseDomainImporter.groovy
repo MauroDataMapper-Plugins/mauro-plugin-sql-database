@@ -656,18 +656,19 @@ class SQLDatabaseDomainImporter {
                 {
                     isEnumerationColumn = false
                     log.warn('excluding {}.{} as enumeration, column is all null', tableClass.label, column.label)
+                    addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'allNull', value: true))
                 }
                 else {
+                    if(notNullValuesCount < 3 * distinctValuesIncludingNull) {
+                        isEnumerationColumn = false
+                        log.warn('excluding {}.{} as enumeration, values are too distinct', tableClass.label, column.label)
+                    }
+
                     double rowFraction = notNullValuesCount / rowCount
                     double valueFraction = 0.33*((distinctValuesIncludingNull - 1) / distinctValuesIncludingNull)
 
-                    if (rowFraction< valueFraction) {
-                        isEnumerationColumn = false
-                        log.warn('excluding {}.{} as enumeration, column is mostly null', tableClass.label, column.label)
-                    }
-                    else if(notNullValuesCount < 3 * distinctValuesIncludingNull) {
-                        isEnumerationColumn = false
-                        log.warn('excluding {}.{} as enumeration, values are too distinct', tableClass.label, column.label)
+                    if (isEnumerationColumn && rowFraction< valueFraction) {
+                        addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'mostlyNull', value: true))
                     }
                 }
             }
