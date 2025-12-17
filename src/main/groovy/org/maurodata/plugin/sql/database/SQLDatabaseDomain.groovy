@@ -13,15 +13,19 @@ abstract class SQLDatabaseDomain {
     abstract String getNAMESPACE()
 
     // Settings
-    int getMAX_ENUMERATION_VALUES() {
+    int getACCEPT_ENUMERATION_VALUES() {
         80
+    }
+
+    int getMAX_ENUMERATION_VALUES() {
+        20000
     }
 
     int getMAX_ENUMERATION_VALUE_LENGTH() {
         100
     }
 
-    int getWARN_ENUMERATION_TYPE() {
+    int getWARN_LARGE_ENUMERATION_TYPE() {
         1000
     }
 

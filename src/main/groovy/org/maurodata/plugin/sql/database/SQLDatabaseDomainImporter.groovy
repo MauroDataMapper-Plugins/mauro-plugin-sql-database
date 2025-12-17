@@ -615,60 +615,83 @@ class SQLDatabaseDomainImporter {
 
             // Does the column end with an enumLookupAdornment or enumGivenAdornment
             (importParams.enumLookupAdornment as List<String>)?.each { if(column.label.toLowerCase().endsWith(it.toLowerCase())) {isEnumerationColumn = true } }
-            (importParams.enumGivenAdornment as List<String>)?.each { if(column.label.toLowerCase().endsWith(it.toLowerCase())) {isEnumerationColumn = true } }
 
+            if(!isEnumerationColumn) {
+                (importParams.enumGivenAdornment as List<String>)?.each {
+                    if (column.label.toLowerCase().endsWith(it.toLowerCase())) {
+                        isEnumerationColumn = true
+                    }
+                }
+            }
 
             // If we've identified a column that could be an enumerated code and it is an integer of some kind
             // we accept a string version of the same column
-            (importParams.enumLookupAdornment as List<String>)?.each { if (tableClass.dataElements.label.contains(column.label.toLowerCase() + it.toLowerCase()) && isString(column)) {isEnumerationColumn = true } }
+            if(!isEnumerationColumn) {
+                (importParams.enumLookupAdornment as List<String>)
+                    ?.each {
+                        if (tableClass.dataElements.label.contains(column.label.toLowerCase() + it.toLowerCase()) && isString(column)) {
+                            isEnumerationColumn = true
+                        }
+                    }
+            }
 
             Metadata distinctValuesMetadata=column.metadata.find {it.key == 'distinct_values_count'}
 
-            if(distinctValuesMetadata!=null) {
+            if(!isEnumerationColumn && distinctValuesMetadata!=null) {
                 long distinctValues = distinctValuesMetadata.value.toLong()
 
-                if (distinctValues <= databaseDomain.getMAX_ENUMERATION_VALUES()) {
+                if (distinctValues <= databaseDomain.getACCEPT_ENUMERATION_VALUES()) {
                     isEnumerationColumn = true
                 }
             }
 
             // Exclude columns
 
-            (importParams.enumIgnoreColumn as List<String>)?.each { if(column.label.toLowerCase() == it.toLowerCase()) {isEnumerationColumn = false } }
-            (importParams.enumIgnoreColumnLike as List<String>)?.each { if(column.label.toLowerCase().indexOf(it.toLowerCase())!=-1) {isEnumerationColumn = false } }
+            if(isEnumerationColumn) {
+                (importParams.enumIgnoreColumn as List<String>)?.each {
+                    if (column.label.toLowerCase() == it.toLowerCase()) {
+                        isEnumerationColumn = false
+                    }
+                }
+                (importParams.enumIgnoreColumnLike as List<String>)?.each {
+                    if (column.label.toLowerCase().indexOf(it.toLowerCase()) != -1) {
+                        isEnumerationColumn = false
+                    }
+                }
+            }
 
             // Only strings, numbers, or date types
-            if(!isString(column) && !isNumeric(column) && !isDateOrTime(column)){
+            if(isEnumerationColumn && !isString(column) && !isNumeric(column) && !isDateOrTime(column)){
                 isEnumerationColumn = false
             }
 
-            // If the level of nulls is large, or the values are too distinct, ignore this as an enumeration
+            if(isEnumerationColumn) {
+                // Check whether the level of nulls is large, or the values are too distinct
 
-            Metadata notNullValuesCountMetadata=column.metadata.find {it.key == 'notNullValuesCount'}
-            Metadata rowCountMetadata=column.metadata.find {it.key == 'rowCount'}
+                Metadata notNullValuesCountMetadata = column.metadata.find {it.key == 'notNullValuesCount'}
+                Metadata rowCountMetadata = column.metadata.find {it.key == 'rowCount'}
 
-            if(notNullValuesCountMetadata!=null && rowCountMetadata!=null && distinctValuesMetadata!=null) {
-                final long notNullValuesCount=notNullValuesCountMetadata.value.toLong()
-                final long rowCount=rowCountMetadata.value.toLong()
-                long distinctValuesIncludingNull = distinctValuesMetadata.value.toLong()+1
+                if (notNullValuesCountMetadata != null && rowCountMetadata != null && distinctValuesMetadata != null) {
+                    final long notNullValuesCount = notNullValuesCountMetadata.value.toLong()
+                    final long rowCount = rowCountMetadata.value.toLong()
+                    long distinctValuesIncludingNull = distinctValuesMetadata.value.toLong() + 1
 
-                if(notNullValuesCount == 0)
-                {
-                    isEnumerationColumn = false
-                    log.warn('excluding {}.{} as enumeration, column is all null', tableClass.label, column.label)
-                    addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'allNull', value: true))
-                }
-                else {
-                    if(notNullValuesCount < 3 * distinctValuesIncludingNull) {
+                    if (notNullValuesCount == 0) {
                         isEnumerationColumn = false
-                        log.warn('excluding {}.{} as enumeration, values are too distinct', tableClass.label, column.label)
-                    }
+                        log.warn('excluding {}.{} as enumeration, column is all null', tableClass.label, column.label)
+                        addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'allNull', value: true))
+                    } else {
+                        if (notNullValuesCount < 3 * distinctValuesIncludingNull) {
+                            isEnumerationColumn = false
+                            log.warn('excluding {}.{} as enumeration, values are too distinct', tableClass.label, column.label)
+                        }
 
-                    double rowFraction = notNullValuesCount / rowCount
-                    double valueFraction = 0.33*((distinctValuesIncludingNull - 1) / distinctValuesIncludingNull)
+                        double rowFraction = notNullValuesCount / rowCount
+                        double valueFraction = 0.33 * ((distinctValuesIncludingNull - 1) / distinctValuesIncludingNull)
 
-                    if (isEnumerationColumn && rowFraction< valueFraction) {
-                        addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'mostlyNull', value: true))
+                        if (isEnumerationColumn && rowFraction < valueFraction) {
+                            addMetadata(column, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'mostlyNull', value: true))
+                        }
                     }
                 }
             }
@@ -800,8 +823,8 @@ class SQLDatabaseDomainImporter {
                     log.warn "Skipping EnumerationType [$enumerationType.label] because keys are not unique"
                 }
 
-                if (enumerationType.enumerationValues.key.size() > databaseDomain.WARN_ENUMERATION_TYPE) {
-                    log.warn "Large EnumerationType! [$enumerationType.label] contains more than ${databaseDomain.WARN_ENUMERATION_TYPE} values"
+                if (enumerationType.enumerationValues.key.size() > databaseDomain.WARN_LARGE_ENUMERATION_TYPE) {
+                    log.warn "Large EnumerationType! [$enumerationType.label] contains more than ${databaseDomain.WARN_LARGE_ENUMERATION_TYPE} values"
                 }
             } else {
                 synchronized (column)
