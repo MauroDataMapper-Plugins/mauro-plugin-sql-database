@@ -1118,7 +1118,7 @@ class SQLDatabaseDomainImporter {
                                 long days = ChronoUnit.DAYS.between(minDate, maxDate)
 
                                 if (days > 70000) {
-                                    // group by decades
+                                    // group by centuries
                                     databaseDomain.queryForSummaryMetadataForDateCenturies(
                                         databaseDomain.concat([databaseDomain.escapeIdentifier('century'),"'-'","${databaseDomain.escapeIdentifier('century')} + 99"]),
                                         databaseDomain.greatest('count',"${databaseDomain.getSUMMARY_METADATA_FLOOR()}"),
