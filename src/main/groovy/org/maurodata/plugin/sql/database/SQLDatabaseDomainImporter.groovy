@@ -64,13 +64,19 @@ class SQLDatabaseDomainImporter {
         return allDataModels
     }
 
+    private Connection getConnection(final DataSource dataSource) {
+        final Connection connection = databaseDomain.getConnection(dataSource, importParams)
+        connection.setReadOnly(true)
+        return connection
+    }
+
     List<DataModel> importDomain(final DataSource dataSource, final String databaseName) {
 
         log.info("Importing catalog/database ${databaseName}")
 
         long startTime=System.currentTimeMillis()
 
-        Connection connection = databaseDomain.getConnection(dataSource, importParams)
+        Connection connection = getConnection(dataSource)
         logConnection(connection)
 
         DataModel dataModel // if we're importing a catalog as a data model
@@ -243,7 +249,7 @@ class SQLDatabaseDomainImporter {
                     log.info "Import table row counts for ${schemaName} ${originalDatabaseIdentifiers.get(tableDataClass)} in chunks of ${dataElementsWithQuery.size()}"
                 }
                 dataElementsWithQuery.parallelStream().forEach { DataElementsWithQuery it ->
-                    try (Connection threadConnection = databaseDomain.getConnection(dataSource,importParams)) {
+                    try (Connection threadConnection = getConnection(dataSource)) {
                         importRowCounts(threadConnection, it)
                     } catch (Exception exception) {
                         //exception.printStackTrace()
@@ -259,7 +265,7 @@ class SQLDatabaseDomainImporter {
             if(!enumerationColumns.isEmpty()) {
                 log.info "Import enumeration values in chunks of ${enumerationColumns.size()}"
                 enumerationColumns.parallelStream().forEach { EnumerationColumns it ->
-                    try (Connection threadConnection = databaseDomain.getConnection(dataSource,importParams)) {
+                    try (Connection threadConnection = getConnection(dataSource)) {
                         importEnumerationValues(threadConnection, it)
                     } catch (Exception exception) {
                         //exception.printStackTrace()
@@ -275,7 +281,7 @@ class SQLDatabaseDomainImporter {
             if(!summaryMetadataForEnumerations.isEmpty()) {
                 log.info "Import summary metadata for enumeration values in chunks of ${summaryMetadataForEnumerations.size()}"
                 summaryMetadataForEnumerations.parallelStream().forEach { SummaryMetadataForEnumerations it ->
-                    try (Connection threadConnection = databaseDomain.getConnection(dataSource,importParams)) {
+                    try (Connection threadConnection = getConnection(dataSource)) {
                         importSummaryMetadataForEnumerations(threadConnection, it)
                     } catch (Exception exception) {
                         //exception.printStackTrace()
@@ -289,7 +295,7 @@ class SQLDatabaseDomainImporter {
             if(!summaryMetadataForDatesAndNumbers.isEmpty()) {
                 log.info "Import summary metadata for dates/numbers in chunks of ${summaryMetadataForDatesAndNumbers.size()}"
                 summaryMetadataForDatesAndNumbers.parallelStream().forEach { SummaryMetadataForDatesAndNumbers it ->
-                    try (Connection threadConnection = databaseDomain.getConnection(dataSource,importParams)) {
+                    try (Connection threadConnection = getConnection(dataSource)) {
                         importSummaryMetadataForDatesAndNumbers(threadConnection, it)
                     } catch (Exception exception) {
                         //exception.printStackTrace()
