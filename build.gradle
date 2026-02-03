@@ -34,6 +34,7 @@ dependencies {
 
     // to include in jar
     implementation("info.picocli:picocli")
+    implementation("ch.qos.logback:logback-classic")
 
     // mssql
     implementation("com.microsoft.sqlserver:mssql-jdbc")
