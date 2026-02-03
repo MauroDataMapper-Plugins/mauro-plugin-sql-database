@@ -70,11 +70,11 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
     }
 
     String queryForConnectionTest(){
-        'select sqrt(-1)'
+        'select 1'
     }
 
     List<Object> connectionTestAssert(){
-        [Double.NaN] as List<Object>
+        [1] as List<Object>
     }
 
     // Querying
