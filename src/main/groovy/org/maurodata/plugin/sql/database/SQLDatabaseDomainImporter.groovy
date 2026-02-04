@@ -327,6 +327,7 @@ class SQLDatabaseDomainImporter {
                     }
                 }
             }
+            log.debug 'done suggestion scores'
         }
 
         log.debug 'done tableDataClasses'
