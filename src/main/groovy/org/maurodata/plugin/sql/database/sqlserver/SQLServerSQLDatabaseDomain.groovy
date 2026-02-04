@@ -163,30 +163,29 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
     PreparedStatement queryForColumns(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike){
         final StringBuilder sb=new StringBuilder(512)
 
-        sb.append("SELECT * FROM ${escapeIdentifier(catalogName)}.information_schema.columns WHERE table_catalog = ? AND table_schema NOT IN ('INFORMATION_SCHEMA','sys'," +
-                  "'guest')")
+        sb.append("SELECT * FROM ${escapeIdentifier(catalogName)}.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = ? AND TABLE_SCHEMA NOT IN ('INFORMATION_SCHEMA','sys','guest')")
 
         if (!schemaNames.isEmpty()) {
             final String includePlaceholders = schemaNames.collect { "?" }.join(", ")
-            sb.append(" AND table_schema IN (${includePlaceholders})")
+            sb.append(" AND TABLE_SCHEMA IN (${includePlaceholders})")
         }
 
         if (!excludeSchemaNames.isEmpty()) {
             final String excludePlaceholders = excludeSchemaNames.collect { "?" }.join(", ")
-            sb.append(" AND table_schema NOT IN (${excludePlaceholders})")
+            sb.append(" AND TABLE_SCHEMA NOT IN (${excludePlaceholders})")
         }
 
         if( excludeTablesLike!=null && !excludeTablesLike.isEmpty()) {
-            final String excludedTablesQueryFragment = excludeTablesLike.collect { " AND table_name not like ?" }.join(" ")
+            final String excludedTablesQueryFragment = excludeTablesLike.collect { " AND TABLE_NAME not like ?" }.join(" ")
             sb.append(excludedTablesQueryFragment)
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
-            final String includedTablesQueryFragment = includeTablesLike.collect { " AND table_name not like ?" }.join(" ")
+            final String includedTablesQueryFragment = includeTablesLike.collect { " AND TABLE_NAME not like ?" }.join(" ")
             sb.append(includedTablesQueryFragment)
         }
 
-        sb.append(" ORDER BY table_schema, table_name, ordinal_position")
+        sb.append(" ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION")
 
         PreparedStatement columnsStatement = connection.prepareStatement(sb.toString())
 
