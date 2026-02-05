@@ -129,7 +129,7 @@ FROM dual
         schemaStatement
     }
 
-    PreparedStatement queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike){
+    List<PreparedStatement> queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike){
 
         final StringBuilder sb=new StringBuilder(384)
         sb.append(
@@ -179,7 +179,7 @@ FROM dual
         excludeTablesLike?.forEach { namespace -> tablesStatement.setString(paramIndex++, "%$namespace%")}
         includeTablesLike?.forEach{String like -> tablesStatement.setString(paramIndex++, "%$like%")}
 
-        tablesStatement
+        [tablesStatement]
     }
 
     boolean canReadTable(Connection connection, String catalogName, String schemaName, String tableName){

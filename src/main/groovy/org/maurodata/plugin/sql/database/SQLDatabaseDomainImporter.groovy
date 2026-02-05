@@ -96,7 +96,7 @@ class SQLDatabaseDomainImporter {
                 originalDatabaseIdentifiers.put(dataModel, (String) catalogResults.catalog_name)
             }
             addResultsAsMetadata(dataModel, catalogResults)
-            log.info 'Found catalogs'
+            log.info "Found catalog ${catalogResults.catalog_name}"
         }
 
         // Import schemas
@@ -107,6 +107,7 @@ class SQLDatabaseDomainImporter {
             log.info 'Loading schema for '+(String) schemaMap.schema_name
 
             if(importParams.catalogAsDataModel as Boolean) {
+                log.debug("New DataClass for schema: ${schemaMap.schema_name} with label ${normaliseLabelCase((String) schemaMap.schema_name)}")
                 DataClass dataClass = new DataClass(label: normaliseLabelCase((String) schemaMap.schema_name), description: schemaMap.comment)
                 synchronized (originalDatabaseIdentifiers) {
                     originalDatabaseIdentifiers.put(dataClass, (String) schemaMap.schema_name)
@@ -142,6 +143,7 @@ class SQLDatabaseDomainImporter {
                 log.warn("Read pre-check failed, this will not appear in the model: "+(String) tableMap.table_catalog+'.'+(String) tableMap.table_schema+'.'+(String) tableMap.table_name)
             }
             else {
+                log.debug("New DataClass for table: ${tableMap.table_name} with label ${normaliseLabelCase((String) tableMap.table_name)}")
                 DataClass dataClass = new DataClass(label: normaliseLabelCase((String) tableMap.table_name), description: tableMap.comment?tableMap.comment:'')
                 synchronized (originalDatabaseIdentifiers) {
                     originalDatabaseIdentifiers.put(dataClass, (String) tableMap.table_name)
@@ -150,12 +152,16 @@ class SQLDatabaseDomainImporter {
 
                 if (importParams.catalogAsDataModel as Boolean) {
                     synchronized (dataModel.dataClasses) {
-                        DataClass schemaClass = dataModel.dataClasses.find { DataClass dataClass1 -> dataClass1.metadata.find { Metadata metadata -> metadata.key == 'catalog_name' }.value == tableMap.table_catalog && dataClass1.label.toLowerCase() == ((String) tableMap.table_schema).toLowerCase()}
+                        DataClass schemaClass = dataModel.dataClasses.find { DataClass dataClass1 -> dataClass1.metadata.find { Metadata metadata -> metadata.key == 'catalog_name' }.value.equalsIgnoreCase(tableMap.table_catalog as String) && dataClass1.label.equalsIgnoreCase(tableMap.table_schema as String)}
+                        if(schemaClass == null) {
+                            log.error 'error importing DataClass: parentClass is null for {}', dataClass.label
+                        }
                         dataClass.dataModel = schemaClass.dataModel
                         dataClass.parentDataClass = schemaClass
                         synchronized (schemaClass.dataClasses) {
                             schemaClass.dataClasses << dataClass
                         }
+
                     }
                 } else {
                     synchronized (dataModels) {
@@ -193,9 +199,9 @@ class SQLDatabaseDomainImporter {
             DataClass parentClass
             if(importParams.catalogAsDataModel as Boolean) {
                 synchronized (dataModel.dataClasses) {
-                    DataClass schemaClass = dataModel.dataClasses.find { it.metadata.find { it.key == 'catalog_name' }.value == columnMap.table_catalog && it.label.toLowerCase() == ((String) columnMap.table_schema).toLowerCase() }
+                    DataClass schemaClass = dataModel.dataClasses.find {it.metadata.find { it.key == 'catalog_name' }.value.equalsIgnoreCase(columnMap.table_catalog as String) && it.label.equalsIgnoreCase(columnMap.table_schema as String) }
                     synchronized (schemaClass.dataClasses) {
-                        parentClass = schemaClass.dataClasses.find { it.label.toLowerCase() == ((String) columnMap.table_name).toLowerCase() }
+                        parentClass = schemaClass.dataClasses.find { it.label.equalsIgnoreCase(columnMap.table_name as String) }
                     }
                 }
             } else {
@@ -203,11 +209,11 @@ class SQLDatabaseDomainImporter {
                     parentClass = parentDataModel.dataClasses.find { it.label.toLowerCase() == ((String) columnMap.table_name).toLowerCase() }
                 }
             }
+            log.info "catalog: [${columnMap.table_catalog}], schema: [${columnMap.table_schema}], table: [${columnMap.table_name}], column: [${columnMap.column_name}]"
             if(parentClass!=null) {
                 synchronized (parentClass.dataElements) {
                     parentClass.dataElements << dataElement
                 }
-                log.info "catalog: [${columnMap.table_catalog}], schema: [${columnMap.table_schema}], table: [${columnMap.table_name}], column: [${columnMap.column_name}]"
             } else {
                 log.error 'error importing DataElement: parentClass is null for {} in dataModel {}', dataElement.label, parentDataModel.label
             }
@@ -408,9 +414,17 @@ class SQLDatabaseDomainImporter {
         return resultSetToList(schemaStatement.executeQuery())
     }
 
-    List<Map<String, Object>> queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike) {
-        PreparedStatement tablesStatement = databaseDomain.queryForTables(connection, catalogName, schemaNames, excludeSchemaNames, excludeTablesLike, includeTablesLike)
-        return resultSetToList(tablesStatement.executeQuery())
+    List<Map<String, Object>> queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames,
+                                             List<String> excludeTablesLike, List<String> includeTablesLike) {
+        List<PreparedStatement> tablesStatements =
+            databaseDomain.queryForTables(connection, catalogName, schemaNames, excludeSchemaNames, excludeTablesLike, includeTablesLike)
+
+        List<Map<String, Object>> all = [] as List<Map<String, Object>>
+        tablesStatements.forEach {PreparedStatement tablesStatement ->
+            all.addAll(resultSetToList(tablesStatement.executeQuery()))
+        }
+
+        return all
     }
 
     List<Map<String, Object>> queryForColumns(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike) {

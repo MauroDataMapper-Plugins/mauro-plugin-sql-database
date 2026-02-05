@@ -83,7 +83,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
         schemaStatement
     }
 
-    PreparedStatement queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike,
+    List<PreparedStatement>  queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike,
                                      List<String> includeTablesLike){
         // Build query fragment for tables that we want to exclude
         String excludedTablesQueryFragment=''
@@ -127,7 +127,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
 
         log.info 'tableStatementQuery: {}', tableStatementQuery
 
-        tablesStatement
+        [tablesStatement]
     }
 
     boolean canReadTable(Connection connection, String catalogName, String schemaName, String tableName){

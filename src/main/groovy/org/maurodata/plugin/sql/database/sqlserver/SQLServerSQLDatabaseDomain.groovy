@@ -107,44 +107,62 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
         schemaStatement
     }
 
-    PreparedStatement queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike){
+    List<PreparedStatement> queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames, List<String> excludeTablesLike, List<String> includeTablesLike){
         final StringBuilder sb=new StringBuilder(384)
+        final StringBuilder sb2=new StringBuilder(384)
 
         sb.append("SELECT t.name AS table_name, s.name AS table_schema, DB_NAME() AS table_catalog, t.*, s.* FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE DB_NAME() = ? AND s.name NOT IN ('INFORMATION_SCHEMA','sys','guest')")
+        sb2.append("SELECT t.name AS table_name, s.name AS table_schema, DB_NAME() AS table_catalog, t.*, s.* FROM sys.views t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE DB_NAME() = ? AND s.name NOT IN ('INFORMATION_SCHEMA','sys','guest')")
 
         if (!schemaNames.isEmpty()) {
             final String includePlaceholders = schemaNames.collect { "?" }.join(", ")
             sb.append(" AND s.name IN (${includePlaceholders})")
+            sb2.append(" AND s.name IN (${includePlaceholders})")
         }
 
         if (!excludeSchemaNames.isEmpty()) {
             final String excludePlaceholders = excludeSchemaNames.collect { "?" }.join(", ")
             sb.append(" AND s.name NOT IN (${excludePlaceholders})")
+            sb2.append(" AND s.name NOT IN (${excludePlaceholders})")
         }
 
         if( excludeTablesLike!=null && !excludeTablesLike.isEmpty()) {
             final String excludedTablesQueryFragment = excludeTablesLike.collect { " AND t.name not like ?" }.join(" ")
             sb.append(excludedTablesQueryFragment)
+            sb2.append(excludedTablesQueryFragment)
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
             final String includedTablesQueryFragment = " AND ("+includeTablesLike.collect { " t.name like ?" }.join(" OR ")+" )"
             sb.append(includedTablesQueryFragment)
+            sb2.append(includedTablesQueryFragment)
         }
 
         sb.append(" ORDER BY s.name, t.name")
+        sb2.append(" ORDER BY s.name, t.name")
 
-        log.debug(sb.toString())
-
-        PreparedStatement tablesStatement = connection.prepareStatement(sb.toString())
+        PreparedStatement tablesStatementTables = connection.prepareStatement(sb.toString())
 
         int paramIndex = 1
-        tablesStatement.setString(paramIndex++, catalogName); log.debug("catalog: ${catalogName}")
-        schemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema); log.debug("schema: ${schema}")}
-        excludeSchemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema); log.debug("not schema: ${schema}")}
-        excludeTablesLike?.forEach { namespace -> tablesStatement.setString(paramIndex++, "%${namespace}%"); log.debug("not table: %${namespace}%")}
-        includeTablesLike?.forEach{String like -> tablesStatement.setString(paramIndex++, "%${like}%"); log.debug("table: %${like}%")}
-        tablesStatement
+
+        // 1
+        tablesStatementTables.setString(paramIndex++, catalogName)
+        schemaNames.forEach { String schema -> tablesStatementTables.setString(paramIndex++, schema)}
+        excludeSchemaNames.forEach { String schema -> tablesStatementTables.setString(paramIndex++, schema)}
+        excludeTablesLike?.forEach { namespace -> tablesStatementTables.setString(paramIndex++, "%${namespace}%")}
+        includeTablesLike?.forEach{String like -> tablesStatementTables.setString(paramIndex++, "%${like}%")}
+
+        PreparedStatement tablesStatementViews = connection.prepareStatement(sb2.toString())
+
+        paramIndex = 1
+        // 2
+        tablesStatementViews.setString(paramIndex++, catalogName); log.debug("catalog: ${catalogName}")
+        schemaNames.forEach { String schema -> tablesStatementViews.setString(paramIndex++, schema); log.debug("schema: ${schema}")}
+        excludeSchemaNames.forEach { String schema -> tablesStatementViews.setString(paramIndex++, schema); log.debug("not schema: ${schema}")}
+        excludeTablesLike?.forEach { namespace -> tablesStatementViews.setString(paramIndex++, "%${namespace}%"); log.debug("not table: %${namespace}%")}
+        includeTablesLike?.forEach{String like -> tablesStatementViews.setString(paramIndex++, "%${like}%"); log.debug("table: %${like}%")}
+
+        return [tablesStatementTables,tablesStatementViews] as List<PreparedStatement>
     }
 
     boolean canReadTable(Connection connection, String catalogName, String schemaName, String tableName){

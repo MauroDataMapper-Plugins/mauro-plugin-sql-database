@@ -53,7 +53,7 @@ abstract class SQLDatabaseDomain {
 
     abstract PreparedStatement queryForSchema(Connection connection, String catalogName, List<String> schemaNames = [], List<String> excludeSchemaNames = [])
 
-    abstract PreparedStatement queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames,
+    abstract List<PreparedStatement> queryForTables(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames,
                                               List<String> excludeTablesLike, List<String> includeTablesLike)
 
     abstract PreparedStatement queryForColumns(Connection connection, String catalogName, List<String> schemaNames, List<String> excludeSchemaNames,
