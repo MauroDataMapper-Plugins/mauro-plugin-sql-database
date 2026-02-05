@@ -103,6 +103,10 @@ abstract class SQLDatabaseDomain {
         'count(*)'
     }
 
+    String countColumn(String columnName) {
+        "count(${escapeIdentifier(columnName)})"
+    }
+
     String countDistinct(String columnName) {
         "count(distinct ${escapeIdentifier(columnName)})"
     }

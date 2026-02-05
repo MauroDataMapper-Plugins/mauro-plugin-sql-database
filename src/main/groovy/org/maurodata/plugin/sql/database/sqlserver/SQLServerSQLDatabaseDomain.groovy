@@ -128,20 +128,22 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
-            final String includedTablesQueryFragment = includeTablesLike.collect { " AND t.name not like ?" }.join(" ")
+            final String includedTablesQueryFragment = " AND ("+includeTablesLike.collect { " t.name like ?" }.join(" OR ")+" )"
             sb.append(includedTablesQueryFragment)
         }
 
         sb.append(" ORDER BY s.name, t.name")
 
+        log.debug(sb.toString())
+
         PreparedStatement tablesStatement = connection.prepareStatement(sb.toString())
 
         int paramIndex = 1
-        tablesStatement.setString(paramIndex++, catalogName)
-        schemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema)}
-        excludeSchemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema)}
-        excludeTablesLike?.forEach { namespace -> tablesStatement.setString(paramIndex++, "%$namespace%")}
-        includeTablesLike?.forEach{String like -> tablesStatement.setString(paramIndex++, "%$like%")}
+        tablesStatement.setString(paramIndex++, catalogName); log.debug("catalog: ${catalogName}")
+        schemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema); log.debug("schema: ${schema}")}
+        excludeSchemaNames.forEach { String schema -> tablesStatement.setString(paramIndex++, schema); log.debug("not schema: ${schema}")}
+        excludeTablesLike?.forEach { namespace -> tablesStatement.setString(paramIndex++, "%${namespace}%"); log.debug("not table: %${namespace}%")}
+        includeTablesLike?.forEach{String like -> tablesStatement.setString(paramIndex++, "%${like}%"); log.debug("table: %${like}%")}
         tablesStatement
     }
 
@@ -181,7 +183,7 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
-            final String includedTablesQueryFragment = includeTablesLike.collect { " AND TABLE_NAME not like ?" }.join(" ")
+            final String includedTablesQueryFragment = " AND ("+includeTablesLike.collect { " TABLE_NAME like ?" }.join(" OR ")+" )"
             sb.append(includedTablesQueryFragment)
         }
 
@@ -486,6 +488,7 @@ ORDER BY (SELECT NULL)
     // Query fragments
     String valueExpressionAsLabel(String valueExpression, String asLabel){"${valueExpression} AS ${escapeIdentifier(asLabel)}"}
     String countAll(){'count(*)'}
+    String countColumn(String columnName) {"count(${escapeIdentifier(columnName)})"}
     String countDistinct(String columnName){"count(distinct ${escapeIdentifier(columnName)})"}
     String min(String columnName){"min(${escapeIdentifier(columnName)})"}
     String max(String columnName){"max(${escapeIdentifier(columnName)})"}
@@ -503,17 +506,8 @@ ORDER BY (SELECT NULL)
         NULLIF(
             ISNULL(
                 REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                LEFT(LTRIM(RTRIM(${valueExpression})), ${MAX_ENUMERATION_VALUE_LENGTH}),
-                                '@', '�'
-                            ),
-                            '\$', '�'
-                        ),
-                        '0', '�'
-                    ),
-                    '\\', '�'
+                    LEFT(LTRIM(RTRIM(${valueExpression})), ${MAX_ENUMERATION_VALUE_LENGTH}),
+                    '\\0', '�'
                 ),
                 '<null>'
             ),
@@ -532,8 +526,7 @@ ORDER BY (SELECT NULL)
     String monthFromDate(String columnName){"MONTH(${escapeIdentifier(columnName)})"}
     String dayFromDate(String columnName){"DAY(${escapeIdentifier(columnName)})"}
     String twoDigits(String valueExpression){"RIGHT('00' + CAST(${valueExpression} AS VARCHAR(2)), 2)"}
-    String binStart(long lowestBinValue, long binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
-
+    String binStart(Number lowestBinValue, Number binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
 
     // Data types
     boolean isString(final String label) {

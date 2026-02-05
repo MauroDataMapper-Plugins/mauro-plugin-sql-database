@@ -92,8 +92,8 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
         }
 
         String includedTablesQueryFragment = ''
-        includeTablesLike.each {
-            includedTablesQueryFragment += ' AND table_name like ?'
+        if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
+            " AND ("+includeTablesLike.collect { " table_name like ?" }.join(" OR ")+" )"
         }
 
         String tableStatementQuery=
@@ -153,8 +153,8 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
         }
 
         String includedTablesQueryFragment = ''
-        includeTablesLike.each {
-            includedTablesQueryFragment += ' AND table_name like ?'
+        if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
+            " AND ("+includeTablesLike.collect { " table_name like ?" }.join(" OR ")+" )"
         }
 
         String columnsStatementQuery=
@@ -406,7 +406,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
     }
 
     String normaliseEnumerationValueSql(String valueExpression){
-        "replace(nvl(nullif(nvl(translate(trim(substr(${valueExpression}, 1, ${MAX_ENUMERATION_VALUE_LENGTH})), '@|\$\\0', '���'), '<null>'), ''), '<blank>'), '\\\\', '\\\\\\\\')"
+        "replace(nvl(nullif(nvl(translate(trim(substr(${valueExpression}, 1, ${MAX_ENUMERATION_VALUE_LENGTH})), '\\0', '�'), '<null>'), ''), '<blank>'), '\\\\', '\\\\\\\\')"
     }
 
     String centuryFromDate(String columnName){"floor(extract(year from ${escapeIdentifier(columnName)})/100)*100"}
@@ -415,7 +415,7 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
     String monthFromDate(String columnName){"extract(month from ${escapeIdentifier(columnName)})"}
     String dayFromDate(String columnName){"extract(day from ${escapeIdentifier(columnName)})"}
     String twoDigits(String valueExpression){"LPAD(CAST(${valueExpression} AS STRING), 2, '0')"}
-    String binStart(long lowestBinValue, long binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
+    String binStart(Number lowestBinValue, Number binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
 
 
     // Data types

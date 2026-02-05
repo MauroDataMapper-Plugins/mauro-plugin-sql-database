@@ -901,7 +901,8 @@ class SQLDatabaseDomainImporter {
         List<String> subqueries = enumerationColumns.collect {DataElement column ->
             synchronized (originalDatabaseIdentifiers) {
 
-                String columnNameEscaped = databaseDomain.escapeIdentifier(originalDatabaseIdentifiers.get(column))
+                String columnName = originalDatabaseIdentifiers.get(column)
+                String columnNameEscaped = databaseDomain.escapeIdentifier(columnName)
 
                 boolean useLookup=false
 
@@ -913,12 +914,12 @@ class SQLDatabaseDomainImporter {
                     catalogName,
                     schemaName,
                     originalDatabaseIdentifiers.get(tableClass),
-                    originalDatabaseIdentifiers.get(column),
+                    columnName,
                     useLookup?
                         databaseDomain.normaliseEnumerationValueSql(databaseDomain.lookupCodeDescriptionSql(databaseDomain.escapeIdentifier(lookup_display),databaseDomain.escapeIdentifier(lookup_value),databaseDomain.escapeIdentifier(lookup_table),columnNameEscaped))
                         :
                         databaseDomain.normaliseEnumerationValueSql(columnNameEscaped),
-                    databaseDomain.greatest(databaseDomain.countAll(),"${databaseDomain.getSUMMARY_METADATA_FLOOR()}"),
+                    databaseDomain.greatest(databaseDomain.countColumn(columnName),"${databaseDomain.getSUMMARY_METADATA_FLOOR()}"),
                     databaseDomain.getMAX_ENUMERATION_VALUES()
                 )
             }
@@ -926,7 +927,7 @@ class SQLDatabaseDomainImporter {
 
         String query = databaseDomain.joinSelects(subqueries)
 
-        log.trace(query)
+        log.debug(query)
 
         PreparedStatement summaryMetadataStatement = connection.prepareStatement(query)
         Map<String, String> summaryMetadataJson = resultSetToList(summaryMetadataStatement.executeQuery()).first() as Map<String, String>
@@ -938,7 +939,7 @@ class SQLDatabaseDomainImporter {
 
                 Map<String,Long> reportValuesMap=databaseDomain.enumerationSummaryMetadataValuesToMapLong(reportValueFromQuery)
 
-                log.trace("reportValuesMap ${reportValuesMap}")
+                // log.debug("reportValuesMap ${reportValuesMap}")
 
                 final JsonBuilder jsonBuilder = new JsonBuilder(reportValuesMap)
                 final String reportValue = jsonBuilder.toString()

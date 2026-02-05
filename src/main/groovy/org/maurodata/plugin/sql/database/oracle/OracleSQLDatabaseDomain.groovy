@@ -163,7 +163,7 @@ FROM dual
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
-            final String includedTablesQueryFragment = includeTablesLike.collect { " AND t.TABLE_NAME NOT LIKE ?" }.join(" ")
+            final String includedTablesQueryFragment = " AND ("+includeTablesLike.collect { " t.TABLE_NAME like ?" }.join(" OR ")+" )"
             sb.append(includedTablesQueryFragment)
         }
 
@@ -242,7 +242,7 @@ FROM dual
         }
 
         if( includeTablesLike!=null && !includeTablesLike.isEmpty()) {
-            final String includedTablesQueryFragment = includeTablesLike.collect { " AND c.TABLE_NAME not like ?" }.join(" ")
+            final String includedTablesQueryFragment = " AND ("+includeTablesLike.collect { " c.TABLE_NAME like ?" }.join(" OR ")+" )"
             sb.append(includedTablesQueryFragment)
         }
 
@@ -543,8 +543,8 @@ FROM dual
                     NVL(
                         TRANSLATE(
                             TRIM(SUBSTR(${valueExpression}, 1, ${MAX_ENUMERATION_VALUE_LENGTH})),
-                            '@\$0',
-                            '���'
+                            '\\0',
+                            '�'
                         ),
                         '<null>'
                     ),
@@ -552,8 +552,8 @@ FROM dual
                 ),
                 '<blank>'
             ),
-            '\\',
-            '\\\\'
+            '\\\\',
+            '\\\\\\\\'
         )
         """.toString()
     }
@@ -564,7 +564,7 @@ FROM dual
     String monthFromDate(String columnName){"extract(month from ${escapeIdentifier(columnName)})"}
     String dayFromDate(String columnName){"extract(day from ${escapeIdentifier(columnName)})"}
     String twoDigits(String valueExpression){"TO_CHAR(${valueExpression}, 'FM00')"}
-    String binStart(long lowestBinValue, long binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
+    String binStart(Number lowestBinValue, Number binInterval, String columnName){"${lowestBinValue} + floor( (${escapeIdentifier(columnName)} - ${lowestBinValue}) / ${binInterval} ) * ${binInterval}"}
 
 
     // Data types
