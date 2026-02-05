@@ -38,6 +38,9 @@ class DatabricksCommand implements Runnable {
     @Option(names = ['-e', '--excluded-tables'], description = 'Ignore table names like', required = false)
     List<String> excludeTablesLike
 
+    @Option(names = ['--included-tables'], description = 'Include table names like', required = false)
+    List<String> includeTablesLike
+
     @Option(names = ['-l', '--enum-lookup-adornment'], description = 'Adornment added to a column to denote it holds enumerable code values that may be looked up in a look up table to retrieve corresponding display names', required = false)
     List<String> enumLookupAdornment
 
@@ -74,6 +77,7 @@ class DatabricksCommand implements Runnable {
             schemaNames: schemaNames,
             excludeSchemaNames: excludeSchemaNames,
             excludeTablesLike: excludeTablesLike,
+            includeTablesLike: includeTablesLike,
             enumLookupAdornment: enumLookupAdornment,
             enumGivenAdornment: enumGivenAdornment,
             enumIgnoreColumn: enumIgnoreColumn,
