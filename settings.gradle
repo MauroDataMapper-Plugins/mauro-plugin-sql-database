@@ -1,2 +1,5 @@
 // TODO: Update root project name
 rootProject.name = 'mauro-plugin-sql-database'
+
+include('plugin')
+include('cli')
