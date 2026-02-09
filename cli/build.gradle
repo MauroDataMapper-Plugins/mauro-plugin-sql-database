@@ -1,0 +1,64 @@
+plugins {
+    id("groovy")
+    id("io.micronaut.application") version "4.6.1"
+    id("io.micronaut.aot") version "4.6.1"
+    id("com.gradleup.shadow") version "8.3.6"
+    id("maven-publish")
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+
+    // TODO: Uncomment this line to depend on snapshot versions of Mauro
+    // maven {url = "https://mauro-repository.com/libs-snapshot-local"}
+}
+
+dependencies {
+    implementation project(':plugin')
+
+    implementation("io.micronaut.groovy:micronaut-runtime-groovy")
+    implementation("info.picocli:picocli-codegen")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut.security:micronaut-security-annotations")
+    implementation("io.micronaut.security:micronaut-security-session")
+    implementation("io.micronaut:micronaut-inject-groovy")
+    implementation("io.micronaut.data:micronaut-data-processor")
+    // runtimeOnly("org.yaml:snakeyaml")
+    implementation("org.apache.groovy:groovy-json")
+
+    // Change this to depend on a different version of Mauro
+    implementation('org.maurodata:mauro-domain:0.0.2-beta')
+
+    // to include in jar
+    implementation("info.picocli:picocli")
+    implementation("ch.qos.logback:logback-classic")
+
+    // mssql
+    implementation("com.microsoft.sqlserver:mssql-jdbc")
+
+    // databricks
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation('com.databricks:databricks-jdbc:3.+')
+
+    // oracle
+    implementation('com.oracle.database.jdbc:ojdbc17:23.26.+')
+    implementation('com.oracle.database.jdbc:ucp:23.26.+')
+
+    // for build / assemble
+    compileOnly("io.micronaut:micronaut-core-reactive")
+    aotPlugins("io.micronaut:micronaut-core-reactive")
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("17")
+    targetCompatibility = JavaVersion.toVersion("17")
+}
+
+application {
+    mainClass.set('org.maurodata.plugin.sql.database.cli.SQLServerCommand')
+}
+
+tasks.named("run", JavaExec) {
+    workingDir = rootProject.projectDir
+}

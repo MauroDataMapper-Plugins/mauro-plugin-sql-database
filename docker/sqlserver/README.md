@@ -33,8 +33,5 @@ Changed database context to 'metadata_simple'.
 Command line / run configurations
 
 ```bash
-    java \
-      -cp mauro-plugin-sql-database.main \
-      org.maurodata.plugin.sql.database.sqlserver.SQLServerCommand \
-      -d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json
+./gradlew run --args='-d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json'
 ```

@@ -1,4 +1,4 @@
-package org.maurodata.plugin.sql.database.sqlserver
+package org.maurodata.plugin.sql.database.cli
 
 import org.maurodata.domain.datamodel.DataModel
 import org.maurodata.plugin.exporter.json.JsonDataModelExporterPlugin
@@ -6,6 +6,8 @@ import org.maurodata.plugin.exporter.json.JsonDataModelExporterPlugin
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import io.micronaut.context.ApplicationContext
+import org.maurodata.plugin.sql.database.sqlserver.SQLServerDatabaseDomainDataModelImporter
+import org.maurodata.plugin.sql.database.sqlserver.SQLServerImportParams
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
@@ -112,7 +114,7 @@ class SQLServerCommand implements Runnable {
                 log.info "Writing to file ${output.toString()}"
                 Files.write(output, json)
             } else {
-                log.debug(new String(json,"UTF-8"))
+                log.debug(new String(json, "UTF-8"))
             }
 
             log.info 'Finished!'

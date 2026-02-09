@@ -1,0 +1,29 @@
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!--<withJansi>true</withJansi>-->
+        <!-- encoders are assigned the type
+             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+            <pattern>%cyan(%d{HH:mm:ss.SSS}) %green([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <!-- If this is set to debug, then tests for cache performance will fail! -->
+    <logger name="io.micronaut.cache" level="info" />
+    <logger name="io.micronaut.data" level="info" />
+    <logger name="io.micronaut.data.query" level="info" />
+    <logger name="io.micronaut" level="info" />
+    <logger name="io.micronaut.http.client.netty" level="info" />
+    <logger name="io.micronaut.security" level="info" />
+
+    <logger name="org.flywaydb" level="info" />
+
+    <logger name="org.maurodata" level="info" />
+    <logger name="org.codehaus.groovy" level="info" />
+
+</configuration>
