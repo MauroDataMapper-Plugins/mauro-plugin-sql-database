@@ -2,6 +2,7 @@ plugins {
     id("groovy")
     id("io.micronaut.library") version "4.6.1"
     id("io.micronaut.aot") version "4.6.1"
+    id("com.gradleup.shadow") version "8.3.6"
     id("maven-publish")
 }
 
@@ -76,22 +77,30 @@ java {
     targetCompatibility = JavaVersion.toVersion("17")
 }
 
+// Publish to the Mauro Snapshot Repository
+
 tasks.withType(Jar).configureEach {
     archiveBaseName.set(rootProject.name)
 }
 
-// TODO: Uncomment this to publish to the Mauro Snapshot Repository
-/*
-publishing {
-    repositories {
-        maven {
-            name = "MauroSnapshotRepository"
-            url = "https://mauro-repository.com/libs-snapshot-local"
-            credentials(PasswordCredentials)
-            authentication {
-                basic(BasicAuthentication)
+plugins.withId("maven-publish") {
+    publishing {
+        publications {
+            create("mavenJava", MavenPublication) {
+                from(components["java"])
+                artifactId = "${rootProject.name}"
+            }
+        }
+
+        repositories {
+            maven {
+                name = "MauroSnapshotRepository"
+                url = "https://mauro-repository.com/libs-snapshot-local"
+                credentials(PasswordCredentials)
+                authentication {
+                    basic(BasicAuthentication)
+                }
             }
         }
     }
 }
-*/

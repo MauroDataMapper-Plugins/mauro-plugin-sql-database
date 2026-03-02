@@ -1,0 +1,14 @@
+
+tasks.register("publishAllToMavenLocal") {
+    dependsOn(
+        ":plugin:publishToMavenLocal",
+        ":cli:publishToMavenLocal"
+    )
+}
+
+tasks.register("publishAllPublicationsToMauroSnapshotRepositoryRepository") {
+    dependsOn(
+        ":plugin:publishAllPublicationsToMauroSnapshotRepositoryRepository",
+        ":cli:publishAllPublicationsToMauroSnapshotRepositoryRepository"
+    )
+}

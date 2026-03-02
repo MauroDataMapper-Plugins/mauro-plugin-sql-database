@@ -2,8 +2,12 @@ plugins {
     id("groovy")
     id("io.micronaut.application") version "4.6.1"
     id("io.micronaut.aot") version "4.6.1"
+    id("com.gradleup.shadow") version "8.3.6"
     id("maven-publish")
 }
+
+group = 'org.maurodata.plugins'
+version = '0.0.1-SNAPSHOT'
 
 repositories {
     mavenLocal()
@@ -64,4 +68,26 @@ tasks.named("run", JavaExec) {
 
 tasks.withType(Jar).configureEach {
     archiveBaseName.set(rootProject.name+'-cli')
+}
+
+plugins.withId("maven-publish") {
+    publishing {
+        publications {
+            create("mavenJava", MavenPublication) {
+                from(components["java"])
+                artifactId = "${rootProject.name}-cli"
+            }
+        }
+
+        repositories {
+            maven {
+                name = "MauroSnapshotRepository"
+                url = "https://mauro-repository.com/libs-snapshot-local"
+                credentials(PasswordCredentials)
+                authentication {
+                    basic(BasicAuthentication)
+                }
+            }
+        }
+    }
 }
