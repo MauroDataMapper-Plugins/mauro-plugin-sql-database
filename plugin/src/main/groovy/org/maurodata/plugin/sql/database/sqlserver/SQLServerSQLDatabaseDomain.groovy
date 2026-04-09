@@ -79,7 +79,7 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
 
     // Querying
     PreparedStatement queryForCatalogs(Connection connection, String catalogName){
-        PreparedStatement catalogStatement = connection.prepareStatement('select name AS CATALOG_NAME, SUSER_SNAME(owner_sid) AS CATALOG_OWNER, * from sys.databases where name = ?')
+        PreparedStatement catalogStatement = connection.prepareStatement("select name AS CATALOG_NAME, CASE WHEN SERVERPROPERTY('EngineEdition') = 5 THEN NULL ELSE SUSER_SNAME(owner_sid) END AS CATALOG_OWNER, * from sys.databases where name = ?")
         catalogStatement.setString(1, catalogName)
         catalogStatement
     }
