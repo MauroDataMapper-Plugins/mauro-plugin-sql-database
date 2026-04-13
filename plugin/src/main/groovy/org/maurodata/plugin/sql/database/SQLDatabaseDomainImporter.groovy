@@ -334,6 +334,18 @@ class SQLDatabaseDomainImporter {
                 }
             }
             log.debug 'done suggestion scores'
+
+            // Remove meta data for numeric and date max and min values
+            for (DataElement dataElement : tableDataClass.dataElements) {
+                Metadata minMetadata = dataElement.metadata.find {it.key == 'min_value'}
+                Metadata maxMetadata = dataElement.metadata.find {it.key == 'max_value'}
+                if (minMetadata) {
+                    dataElement.metadata.remove(minMetadata)
+                }
+                if (maxMetadata) {
+                    dataElement.metadata.remove(maxMetadata)
+                }
+            }
         }
 
         log.debug 'done tableDataClasses'
