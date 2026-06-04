@@ -11,8 +11,11 @@ class SQLServerImportParams extends SQLDatabaseDomainImportParams {
 
     @ImportParameterConfig(
         displayName = 'Authentication Scheme',
-        description = ['Authentication scheme to use, options are [nativeAuthentication, ntlm, javaKerberos].',
-            'If anything other than nativeAuthentication is used integratedSecurity will be set to "true". Default is NTLM.'],
+        description = ['Authentication scheme to use for Windows/domain authentication. Options are [nativeAuthentication, ntlm, javaKerberos].',
+            'Leave blank for SQL Server username/password authentication.',
+            'Use nativeAuthentication with integratedSecurity=true to use the Windows identity running Mauro.',
+            'Use ntlm with domain, username, and password for explicit Windows/domain credentials.',
+            'If ntlm or javaKerberos is selected, integratedSecurity will be set to true.'],
         order = 1,
         optional = true,
         group = @ImportGroupConfig(
@@ -23,9 +26,11 @@ class SQLServerImportParams extends SQLDatabaseDomainImportParams {
 
     @ImportParameterConfig(
         displayName = 'Integrated Security',
-        description = ['Use integrated security?',
-            'If anything other than nativeAuthentication is used as authentication schema then integratedSecurity will be set to "true".'],
+        description = ['Use SQL Server integrated security?',
+            'This is automatically enabled for ntlm and javaKerberos authentication schemes.',
+            'For nativeAuthentication, set this to true to use the Windows identity running Mauro.'],
         order = 2,
+        optional = true,
         group = @ImportGroupConfig(
             name = 'SQLServer DataSource Connection Details',
             order = 0
