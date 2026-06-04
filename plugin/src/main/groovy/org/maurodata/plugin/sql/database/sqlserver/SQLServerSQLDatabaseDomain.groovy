@@ -23,7 +23,9 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
     // Defaults
     private final static String DEFAULT_DATABASE_HOST='localhost'
     private final static int DEFAULT_DATABASE_PORT=1433
-    private final static String DEFAULT_AUTHENTICATION_SCHEME='ntlm'
+    private final static String AUTHENTICATION_SCHEME_NATIVE='nativeAuthentication'
+    private final static String AUTHENTICATION_SCHEME_NTLM='ntlm'
+    private final static String AUTHENTICATION_SCHEME_JAVA_KERBEROS='javaKerberos'
 
     // Connecting
     DataSource getDatasource(final Map<String, Object> params, final String databaseName) {
@@ -42,14 +44,9 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
         sqlServerDataSource.setDatabaseName(databaseName)
         sqlServerDataSource.setTrustServerCertificate(true)
 
-        String authScheme = params.authenticationScheme ?: DEFAULT_AUTHENTICATION_SCHEME
-        if (!(authScheme.toLowerCase() in ['nativeauthentication', DEFAULT_AUTHENTICATION_SCHEME, 'javakerberos'])) authScheme = DEFAULT_AUTHENTICATION_SCHEME
-        sqlServerDataSource.setAuthenticationScheme(authScheme)
-
-        if (params.integratedSecurity != null) {
-            sqlServerDataSource.setIntegratedSecurity(params.integratedSecurity as boolean)
-        } else {
-            sqlServerDataSource.setIntegratedSecurity(false)
+        final String authScheme = normaliseAuthenticationScheme(params.authenticationScheme)
+        if (authScheme) {
+            sqlServerDataSource.setAuthenticationScheme(authScheme)
         }
 
         if (serverInstance) {sqlServerDataSource.setInstanceName(serverInstance)}
@@ -60,16 +57,56 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
 
         sqlServerDataSource.setApplicationName('Mauro-Data-Mapper')
 
-        if (params.domain) {
-            sqlServerDataSource.setDomain(params.domain as String)
+        final boolean integratedSecurity = shouldUseIntegratedSecurity(authScheme, params.integratedSecurity)
+        sqlServerDataSource.setIntegratedSecurity(integratedSecurity)
+
+        final String domain = trimToNull(params.domain)
+        if (domain) {
+            sqlServerDataSource.setDomain(domain)
         }
 
-        if (params.username && params.password) {
-            sqlServerDataSource.setUser(params.username as String)
-            sqlServerDataSource.setPassword(params.password as String)
+        final String username = trimToNull(params.username)
+        final String password = trimToNull(params.password)
+        if (username && password) {
+            sqlServerDataSource.setUser(username)
+            sqlServerDataSource.setPassword(password)
         }
 
         return sqlServerDataSource
+    }
+
+    private static String normaliseAuthenticationScheme(final Object authenticationScheme) {
+        final String value = trimToNull(authenticationScheme)
+        if (!value) return null
+
+        switch (value.toLowerCase(Locale.ROOT)) {
+            case 'nativeauthentication':
+                return AUTHENTICATION_SCHEME_NATIVE
+            case 'ntlm':
+                return AUTHENTICATION_SCHEME_NTLM
+            case 'javakerberos':
+                return AUTHENTICATION_SCHEME_JAVA_KERBEROS
+            default:
+                log.warn('Unrecognised SQL Server authentication scheme {}, leaving authenticationScheme unset', value)
+                return null
+        }
+    }
+
+    private static boolean shouldUseIntegratedSecurity(final String authenticationScheme, final Object integratedSecurity) {
+        if (authenticationScheme in [AUTHENTICATION_SCHEME_NTLM, AUTHENTICATION_SCHEME_JAVA_KERBEROS]) {
+            return true
+        }
+        if (integratedSecurity != null) {
+            return integratedSecurity as boolean
+        }
+        return authenticationScheme == AUTHENTICATION_SCHEME_NATIVE
+    }
+
+    private static String trimToNull(final Object value) {
+        if (value == null) return null
+
+        final String stringValue = value.toString().trim()
+        stringValue ? stringValue : null
     }
 
     Connection getConnection(final DataSource dataSource, final Map<String,Object> params){

@@ -53,17 +53,18 @@ class SQLDatabaseDomainImporter {
         final List<String> databaseNames = (List<String>) importParams.databaseNames
 
         if(databaseNames) {
-            databaseNames.forEach {String databaseName ->
-                final DataSource dataSource = databaseDomain.getDatasource(importParams, databaseName)
+            for (String databaseName : databaseNames) {
+                DataSource dataSource = null
                 try {
+                    dataSource = databaseDomain.getDatasource(importParams, databaseName)
                     List<DataModel> imported = importDomain(dataSource, databaseName)
                     allDataModels.addAll(imported)
                 } catch (Throwable throwable) {
                     final Throwable rootCause = unwrapThrowable(throwable)
                     log.error("Import failed for catalog/database {}", databaseName)
-                    log.error("Root cause: {}: {}", rootCause.getClass().name, rootCause.message)
+                    log.error("Root cause: {}: {}", rootCause?.getClass()?.name, rootCause?.message)
                     log.error("Import stack trace", rootCause)
-                    throw rootCause
+                    throw importFailure(databaseName, rootCause)
                 } finally {
                     if (dataSource instanceof Closeable) {
                         ((Closeable) dataSource).close()
@@ -83,9 +84,9 @@ class SQLDatabaseDomainImporter {
         } catch (Throwable throwable) {
             final Throwable rootCause = unwrapThrowable(throwable)
             log.error("Failed to obtain SQL connection")
-            log.error("Root cause: {}: {}", rootCause.getClass().name, rootCause.message)
+            log.error("Root cause: {}: {}", rootCause?.getClass()?.name, rootCause?.message)
             log.error("Connection stack trace", rootCause)
-            throw rootCause
+            throw rootCause ? new RuntimeException("Failed to obtain SQL connection: ${rootCause.message}", rootCause) : new RuntimeException("Failed to obtain SQL connection")
         }
     }
 
@@ -109,6 +110,11 @@ class SQLDatabaseDomainImporter {
             break
         }
         return current
+    }
+
+    private static RuntimeException importFailure(final String databaseName, final Throwable rootCause) {
+        final String rootMessage = rootCause?.message ?: rootCause?.getClass()?.name ?: 'Unknown import failure'
+        new RuntimeException("Import failed for catalog/database ${databaseName}: ${rootMessage}", rootCause)
     }
 
     List<DataModel> importDomain(final DataSource dataSource, final String databaseName) {
