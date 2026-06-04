@@ -21,6 +21,8 @@ import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.ResultSetMetaData
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.UndeclaredThrowableException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -53,10 +55,19 @@ class SQLDatabaseDomainImporter {
         if(databaseNames) {
             databaseNames.forEach {String databaseName ->
                 final DataSource dataSource = databaseDomain.getDatasource(importParams, databaseName)
-                List<DataModel> imported = importDomain(dataSource, databaseName)
-                allDataModels.addAll(imported)
-                if(dataSource instanceof Closeable){
-                    ((Closeable) dataSource).close()
+                try {
+                    List<DataModel> imported = importDomain(dataSource, databaseName)
+                    allDataModels.addAll(imported)
+                } catch (Throwable throwable) {
+                    final Throwable rootCause = unwrapThrowable(throwable)
+                    log.error("Import failed for catalog/database {}", databaseName)
+                    log.error("Root cause: {}: {}", rootCause.getClass().name, rootCause.message)
+                    log.error("Import stack trace", rootCause)
+                    throw rootCause
+                } finally {
+                    if (dataSource instanceof Closeable) {
+                        ((Closeable) dataSource).close()
+                    }
                 }
             }
         }
@@ -65,9 +76,39 @@ class SQLDatabaseDomainImporter {
     }
 
     private Connection getConnection(final DataSource dataSource) {
-        final Connection connection = databaseDomain.getConnection(dataSource, importParams)
-        connection.setReadOnly(true)
-        return connection
+        try {
+            final Connection connection = databaseDomain.getConnection(dataSource, importParams)
+            connection.setReadOnly(true)
+            return connection
+        } catch (Throwable throwable) {
+            final Throwable rootCause = unwrapThrowable(throwable)
+            log.error("Failed to obtain SQL connection")
+            log.error("Root cause: {}: {}", rootCause.getClass().name, rootCause.message)
+            log.error("Connection stack trace", rootCause)
+            throw rootCause
+        }
+    }
+
+    private static Throwable unwrapThrowable(final Throwable throwable) {
+        if (throwable == null) return null
+
+        Throwable current = throwable
+        while (true) {
+            if (current instanceof UndeclaredThrowableException && ((UndeclaredThrowableException) current).undeclaredThrowable) {
+                current = ((UndeclaredThrowableException) current).undeclaredThrowable
+                continue
+            }
+            if (current instanceof InvocationTargetException && ((InvocationTargetException) current).targetException) {
+                current = ((InvocationTargetException) current).targetException
+                continue
+            }
+            if (current.cause && current.cause != current) {
+                current = current.cause
+                continue
+            }
+            break
+        }
+        return current
     }
 
     List<DataModel> importDomain(final DataSource dataSource, final String databaseName) {
