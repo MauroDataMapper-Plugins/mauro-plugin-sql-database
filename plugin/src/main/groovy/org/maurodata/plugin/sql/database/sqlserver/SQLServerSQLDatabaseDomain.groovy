@@ -26,11 +26,19 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
     private final static String DEFAULT_AUTHENTICATION_SCHEME='ntlm'
 
     // Connecting
-    DataSource getDatasource(final Map<String,Object> params, final String databaseName){
+    DataSource getDatasource(final Map<String, Object> params, final String databaseName) {
         SQLServerDataSource sqlServerDataSource = new SQLServerDataSource()
 
-        sqlServerDataSource.setServerName(params.databaseHost ? params.databaseHost as String: DEFAULT_DATABASE_HOST)
-        sqlServerDataSource.setPortNumber(params.databasePort ? (params.databasePort as Integer).intValue() : DEFAULT_DATABASE_PORT)
+        final String serverInstance = params.serverInstance ? params.serverInstance as String : null
+
+        final Integer databasePort = params.databasePort != null ? (params.databasePort as Integer) : null
+
+        sqlServerDataSource.setServerName(params.databaseHost ? params.databaseHost as String : DEFAULT_DATABASE_HOST)
+        if (databasePort != null && databasePort > 0 && databasePort <= 65535) {
+            sqlServerDataSource.setPortNumber(databasePort.intValue())
+        } else if (!serverInstance) {
+            sqlServerDataSource.setPortNumber(DEFAULT_DATABASE_PORT)
+        }
         sqlServerDataSource.setDatabaseName(databaseName)
         sqlServerDataSource.setTrustServerCertificate(true)
 
@@ -38,13 +46,13 @@ class SQLServerSQLDatabaseDomain extends SQLDatabaseDomain {
         if (!(authScheme.toLowerCase() in ['nativeauthentication', DEFAULT_AUTHENTICATION_SCHEME, 'javakerberos'])) authScheme = DEFAULT_AUTHENTICATION_SCHEME
         sqlServerDataSource.setAuthenticationScheme(authScheme)
 
-        if(params.integratedSecurity !=null ) {
+        if (params.integratedSecurity != null) {
             sqlServerDataSource.setIntegratedSecurity(params.integratedSecurity as boolean)
         } else {
             sqlServerDataSource.setIntegratedSecurity(false)
         }
 
-        if (params.serverInstance) {sqlServerDataSource.setInstanceName(params.serverInstance as String)}
+        if (serverInstance) {sqlServerDataSource.setInstanceName(serverInstance)}
 
         if (params.databaseSSL) {
             sqlServerDataSource.setEncrypt('true')
