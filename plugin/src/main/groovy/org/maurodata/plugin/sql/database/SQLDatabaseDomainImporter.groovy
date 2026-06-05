@@ -1006,16 +1006,18 @@ class SQLDatabaseDomainImporter {
                 final String reportValue = jsonBuilder.toString()
                 log.debug("histogram reportValue ${reportValue}")
 
-                SummaryMetadata summaryMetadata = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
-                summaryMetadata.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
+                SummaryMetadata summaryMetadata1 = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
+                summaryMetadata1.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
+                SummaryMetadata summaryMetadata2 = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
+                summaryMetadata2.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
                 synchronized (it.summaryMetadata) {
                     if (it.summaryMetadata) {
                         log.error 'Adding to summaryMetadata (enumeration) but the size is already {} for {}', it.summaryMetadata.size(), it.label
                     }
-                    it.summaryMetadata << summaryMetadata
+                    it.summaryMetadata << summaryMetadata1
                 }
                 synchronized (tableClass.summaryMetadata) {
-                    tableClass.summaryMetadata << summaryMetadata
+                    tableClass.summaryMetadata << summaryMetadata2
                 }
                 addMetadata(it, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'entropy', value: calculateEntropy(reportValuesMap)))
                 addMetadata(it, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'imbalance', value: calculateImbalance(reportValuesMap)))
@@ -1352,16 +1354,18 @@ class SQLDatabaseDomainImporter {
                 final String reportValue = jsonBuilder.toString()
                 log.debug("histogram dateAndNumericElements ${it.label.toLowerCase()} reportValue ${reportValue}")
 
-                SummaryMetadata summaryMetadata = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
-                summaryMetadata.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
+                SummaryMetadata summaryMetadata1 = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
+                summaryMetadata1.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
+                SummaryMetadata summaryMetadata2 = new SummaryMetadata(label: it.label, summaryMetadataType: SummaryMetadataType.MAP, summaryMetadataReports: [])
+                summaryMetadata2.summaryMetadataReports << new SummaryMetadataReport(reportValue: reportValue, reportDate: Instant.now())
                 synchronized (it.summaryMetadata) {
                     if (it.summaryMetadata) {
                         log.error 'Adding to summaryMetadata (date/numeric) but the size is already {} for {}', it.summaryMetadata.size(), it.label
                     }
-                    it.summaryMetadata << summaryMetadata
+                    it.summaryMetadata << summaryMetadata1
                 }
                 synchronized (tableClass.summaryMetadata) {
-                    tableClass.summaryMetadata << summaryMetadata
+                    tableClass.summaryMetadata << summaryMetadata2
                 }
 
                 addMetadata(it, new Metadata(namespace: EXPLORER_NAMESPACE, key: 'entropy', value: calculateEntropy(reportValuesMap)))
