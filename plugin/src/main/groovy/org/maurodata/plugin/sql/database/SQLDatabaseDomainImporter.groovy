@@ -40,6 +40,7 @@ class SQLDatabaseDomainImporter {
     final SQLDatabaseDomain databaseDomain
     final Map<String,Object> importParams
     final Map<Object,String> originalDatabaseIdentifiers = [:]
+    SQLDatabaseImportConfig importConfig = new SQLDatabaseImportConfig()
 
     SQLDatabaseDomainImporter(final SQLDatabaseDomain databaseDomain, final Map<String,Object> importParams){
         this.databaseDomain=databaseDomain
@@ -119,6 +120,8 @@ class SQLDatabaseDomainImporter {
 
     List<DataModel> importDomain(final DataSource dataSource, final String databaseName) {
 
+        importConfig = SQLDatabaseImportConfig.load(importParams.yamlConfigPath as String)
+
         log.info("Importing catalog/database ${databaseName}")
 
         long startTime=System.currentTimeMillis()
@@ -148,6 +151,7 @@ class SQLDatabaseDomainImporter {
 
         // Import schemas
         List<Map<String, Object>> schemaResults = queryForSchema(connection, databaseName, importParams.schemaNames as List<String>, importParams.excludeSchemaNames as List<String>)
+            .findAll { Map<String, Object> row -> !importConfig.excluded(row.schema_name as String) }
         log.debug("schemaResults ${schemaResults.toString()}")
 
         schemaResults.each { final Map<String,Object> schemaMap ->
@@ -178,6 +182,7 @@ class SQLDatabaseDomainImporter {
         }
 
         List<Map<String, Object>> tableResults = queryForTables(connection, databaseName, importParams.schemaNames as List<String>, importParams.excludeSchemaNames as List<String>, importParams.excludeTablesLike as List<String>, importParams.includeTablesLike as List<String>)
+            .findAll { Map<String, Object> row -> !importConfig.excluded(row.table_schema as String, row.table_name as String) }
         log.info("tables (${tableResults.size()}) ")
         log.debug("tableResults ${tableResults.toString()}")
 
@@ -227,6 +232,7 @@ class SQLDatabaseDomainImporter {
         log.debug 'done tableResults'
 
         List<Map<String, Object>> columnResults = queryForColumns(connection, databaseName, importParams.schemaNames as List<String>, importParams.excludeSchemaNames as List<String>, importParams.excludeTablesLike as List<String>, importParams.includeTablesLike as List<String>)
+            .findAll { Map<String, Object> row -> !importConfig.excluded(row.table_schema as String, row.table_name as String, row.column_name as String) }
 
         connection.close()
 
@@ -606,6 +612,12 @@ class SQLDatabaseDomainImporter {
             if(dataElements.size()>0) {
                 synchronized (originalDatabaseIdentifiers) {
                     List<String> queryComponents = [databaseDomain.valueExpressionAsLabel(databaseDomain.countAll(), '__count_all')]
+                DataElement countIdentifier = tableClass.dataElements.find { DataElement element ->
+                    importConfig.options(schemaName, tableClass.label, element.label).countIdentifier == true
+                }
+                if (countIdentifier != null) {
+                    queryComponents << databaseDomain.valueExpressionAsLabel(databaseDomain.countDistinct(originalDatabaseIdentifiers.get(countIdentifier)), '__count_identifier')
+                }
                 queryComponents.addAll(dataElements.findAll {!isLOB(it) }.collect { DataElement it -> String columnName = originalDatabaseIdentifiers.get(it);  databaseDomain.valueExpressionAsLabel(databaseDomain.countDistinct(columnName), columnName.toLowerCase())})
                 queryComponents.addAll(dataElements.findAll {isDateOrTime(it) || isNumeric(it) }.collect { DataElement it -> String columnName = originalDatabaseIdentifiers.get(it); "${databaseDomain.valueExpressionAsLabel(databaseDomain.min(columnName),columnName.toLowerCase() + '_min')}, ${databaseDomain.valueExpressionAsLabel(databaseDomain.max(columnName),columnName.toLowerCase() + '_max')}" as String})
                 queryComponents.addAll(
@@ -646,6 +658,15 @@ class SQLDatabaseDomainImporter {
         }
 
         addMetadata(tableClass, new Metadata(namespace: databaseDomain.getNAMESPACE(), key: 'row_count', value: counts['__count_all']))
+        String schemaName = tableClass.parentDataClass?.label ?: tableClass.dataModel?.label
+        DataElement countIdentifier = tableClass.dataElements.find { DataElement element ->
+            importConfig.options(schemaName, tableClass.label, element.label).countIdentifier == true
+        }
+        if (countIdentifier != null) {
+            String label = (importConfig.options(schemaName, tableClass.label, countIdentifier.label).countLabel ?: countIdentifier.label).toString()
+            addMetadata(tableClass, new Metadata(namespace: databaseDomain.getNAMESPACE(), key: 'count_identifier_count', value: counts['__count_identifier']))
+            addMetadata(tableClass, new Metadata(namespace: databaseDomain.getNAMESPACE(), key: 'count_identifier_label', value: label))
+        }
         dataElements.each {DataElement dataElement ->
             synchronized (originalDatabaseIdentifiers) {
                 String columnName = originalDatabaseIdentifiers.get(dataElement)
@@ -680,6 +701,7 @@ class SQLDatabaseDomainImporter {
         List<DataElement> enumerationColumnsFound = []
         tableClass.dataElements.each {DataElement column ->
             boolean isEnumerationColumn = false
+            Map<String, Object> options = importConfig.options(schemaName, tableClass.label, column.label)
 
             // Does the column end with an enumLookupAdornment or enumGivenAdornment
             (importParams.enumLookupAdornment as List<String>)?.each { if(column.label.toLowerCase().endsWith(it.toLowerCase())) {isEnumerationColumn = true } }
@@ -705,7 +727,7 @@ class SQLDatabaseDomainImporter {
 
             Metadata distinctValuesMetadata=column.metadata.find {it.key == 'distinct_values_count'}
 
-            if(!isEnumerationColumn && distinctValuesMetadata!=null) {
+            if(options.enumerationIfLowCardinalityHeuristic != false && !isEnumerationColumn && distinctValuesMetadata!=null) {
                 long distinctValues = distinctValuesMetadata.value.toLong()
 
                 if (distinctValues <= databaseDomain.getACCEPT_ENUMERATION_VALUES()) {
@@ -764,6 +786,7 @@ class SQLDatabaseDomainImporter {
                 }
             }
 
+            if (options.enumeration instanceof Boolean) isEnumerationColumn = options.enumeration as Boolean
             if (isEnumerationColumn){enumerationColumnsFound << column}
         }
 
@@ -824,14 +847,29 @@ class SQLDatabaseDomainImporter {
         List<String> subqueries = enumerationColumns.collect {DataElement column ->
             synchronized (originalDatabaseIdentifiers) {
 
+                Map<String, Object> configured = importConfig.options(schemaName, tableClass.label, column.label)
+                String display = (configured.enumDisplayColumn ?: lookup_display) as String
+                String value = (configured.enumCodeColumn ?: lookup_value) as String
+                String table = (configured.enumLookupTable ?: lookup_table) as String
+                boolean lookupQuery = table != null && table ==~ /(?is)^\s*(select|with)\b.*/
+                if (lookupQuery) table = table.replaceFirst(/;\s*$/, '').trim()
+
                 String columnName = originalDatabaseIdentifiers.get(column)
 
                 boolean useLookup=false
 
-                if(lookup_display!=null && isInteger(column))
+                if(display!=null && value!=null && table!=null && isInteger(column))
                 {
                     (importParams.enumLookupAdornment as List<String>).each { if(column.label.toLowerCase().endsWith(it.toLowerCase())) {useLookup = true} }
                 }
+                if (configured.enumLookupTable && configured.enumDisplayColumn && configured.enumCodeColumn) useLookup = true
+                if (configured.enumLookupEnabled == false) useLookup = false
+
+                String lookupTableArgument = lookupQuery ? "(${table})" : (table ? databaseDomain.escapeIdentifier(table) : '')
+                String descriptionExpression = useLookup ?
+                    databaseDomain.normaliseEnumerationValueSql(databaseDomain.lookupCodeDescriptionSql(
+                        databaseDomain.escapeIdentifier(display), databaseDomain.escapeIdentifier(value), lookupTableArgument,
+                        databaseDomain.escapeIdentifier(columnName))) : databaseDomain.normaliseEnumerationValueSql(columnName)
 
                 databaseDomain.queryForEnumerationValues(
                     catalogName,
@@ -839,11 +877,7 @@ class SQLDatabaseDomainImporter {
                     originalDatabaseIdentifiers.get(tableClass),
                     originalDatabaseIdentifiers.get(column),
                     databaseDomain.normaliseEnumerationValueSql(columnName),
-                    useLookup?
-                        databaseDomain.normaliseEnumerationValueSql(databaseDomain.lookupCodeDescriptionSql(databaseDomain.escapeIdentifier(lookup_display),databaseDomain.escapeIdentifier(lookup_value),databaseDomain.escapeIdentifier(lookup_table),databaseDomain.escapeIdentifier(columnName)))
-                        :
-                        databaseDomain.normaliseEnumerationValueSql(columnName)
-                    ,
+                    descriptionExpression,
                     databaseDomain.getMAX_ENUMERATION_VALUES()
                 )
             }

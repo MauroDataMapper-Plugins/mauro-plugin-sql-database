@@ -8,7 +8,7 @@ plugins {
 
 // TODO: Update group and version number if applicable
 group = 'org.maurodata.plugins'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.2-SNAPSHOT'
 
 repositories {
     mavenLocal()
@@ -30,18 +30,22 @@ dependencies {
     compileOnly("org.apache.groovy:groovy-json")
 
     // Change this to depend on a different version of Mauro
-    compileOnly('org.maurodata:mauro-domain:0.0.2-beta')
+    compileOnly('org.maurodata:mauro-domain:0.0.3-beta')
+    testImplementation('org.maurodata:mauro-domain:0.0.3-beta')
+    testRuntimeOnly('net.bytebuddy:byte-buddy:1.15.11')
+    compileOnly('com.fasterxml.uuid:java-uuid-generator:5.2.0')
 
     // to include in jar
     implementation("info.picocli:picocli")
     implementation("ch.qos.logback:logback-classic")
+    implementation("org.yaml:snakeyaml:2.2")
 
     // mssql
     implementation("com.microsoft.sqlserver:mssql-jdbc")
 
     // databricks
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    implementation('com.databricks:databricks-jdbc:3.+')
+    implementation('com.databricks:databricks-jdbc:3.4.5')
 
     // oracle
     implementation('com.oracle.database.jdbc:ojdbc17:23.26.+')

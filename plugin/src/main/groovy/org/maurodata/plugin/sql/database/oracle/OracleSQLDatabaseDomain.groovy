@@ -265,7 +265,11 @@ FROM dual
     }
 
     String lookupCodeDescriptionSql(final String display, final String value, final String table, final String identifier){
-        return "(SELECT ${escapeIdentifier(display)} FROM ${escapeIdentifier(table)} WHERE ${escapeIdentifier(value)} = ${identifier} AND ${escapeIdentifier(display)} IS NOT NULL ORDER BY (SELECT NULL) FETCH FIRST 1 ROW ONLY)"
+        boolean lookupQuery = table ==~ /(?is)^\s*\(\s*(select|with)\b.*/
+        String source = lookupQuery ? "${table} enum_lookup" : escapeIdentifier(table)
+        String displayColumn = lookupQuery ? "enum_lookup.${escapeIdentifier(display)}" : escapeIdentifier(display)
+        String valueColumn = lookupQuery ? "enum_lookup.${escapeIdentifier(value)}" : escapeIdentifier(value)
+        return "(SELECT ${displayColumn} FROM ${source} WHERE ${valueColumn} = ${identifier} AND ${displayColumn} IS NOT NULL ORDER BY (SELECT NULL) FETCH FIRST 1 ROW ONLY)"
     }
 
     String queryForEnumerationValues(String catalogName, String schemaName, String tableName, String columnName, String codeValue, String description, long MAX_ENUMERATION_VALUES){
