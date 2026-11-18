@@ -33,5 +33,5 @@ Changed database context to 'metadata_simple'.
 Command line / run configurations
 
 ```bash
-./gradlew run --args='-d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json'
+./gradlew :cli:runSqlServer --args='-d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json'
 ```

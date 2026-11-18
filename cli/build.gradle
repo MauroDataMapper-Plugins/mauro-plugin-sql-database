@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'org.maurodata.plugins'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.2-SNAPSHOT'
 
 repositories {
     mavenLocal()
@@ -27,11 +27,11 @@ dependencies {
     implementation("io.micronaut.security:micronaut-security-session")
     implementation("io.micronaut:micronaut-inject-groovy")
     implementation("io.micronaut.data:micronaut-data-processor")
-    // runtimeOnly("org.yaml:snakeyaml")
     implementation("org.apache.groovy:groovy-json")
 
     // Change this to depend on a different version of Mauro
-    implementation('org.maurodata:mauro-domain:0.0.2-beta')
+    implementation('org.maurodata:mauro-domain:0.0.3-beta')
+    implementation('com.fasterxml.uuid:java-uuid-generator:5.2.0')
 
     // to include in jar
     implementation("info.picocli:picocli")
@@ -42,7 +42,7 @@ dependencies {
 
     // databricks
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    implementation('com.databricks:databricks-jdbc:3.+')
+    implementation('com.databricks:databricks-jdbc:3.4.5')
 
     // oracle
     implementation('com.oracle.database.jdbc:ojdbc17:23.26.+')
@@ -53,6 +53,10 @@ dependencies {
     aotPlugins("io.micronaut:micronaut-core-reactive")
 }
 
+micronaut {
+    testRuntime("spock2")
+}
+
 java {
     sourceCompatibility = JavaVersion.toVersion("17")
     targetCompatibility = JavaVersion.toVersion("17")
@@ -60,10 +64,26 @@ java {
 
 application {
     mainClass.set('org.maurodata.plugin.sql.database.cli.SQLServerCommand')
+    applicationDefaultJvmArgs = ['--add-opens=java.base/java.nio=ALL-UNNAMED']
 }
 
-tasks.named("run", JavaExec) {
+tasks.withType(JavaExec).configureEach {
     workingDir = rootProject.projectDir
+    jvmArgs '--add-opens=java.base/java.nio=ALL-UNNAMED'
+}
+
+tasks.register('runSqlServer', JavaExec) {
+    group = 'application'
+    description = 'Run the SQL Server importer CLI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('org.maurodata.plugin.sql.database.cli.SQLServerCommand')
+}
+
+tasks.register('runOracle', JavaExec) {
+    group = 'application'
+    description = 'Run the Oracle importer CLI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('org.maurodata.plugin.sql.database.oracle.OracleCommand')
 }
 
 tasks.withType(Jar).configureEach {

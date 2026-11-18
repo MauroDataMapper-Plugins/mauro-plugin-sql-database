@@ -189,7 +189,11 @@ class DatabricksSQLDatabaseDomain extends SQLDatabaseDomain {
     }
 
     String lookupCodeDescriptionSql(final String display, final String value, final String table, final String identifier){
-        return '(select first('+display+') from '+table+' where '+value+' = '+identifier+')'
+        boolean lookupQuery = table ==~ /(?is)^\s*\(\s*(select|with)\b.*/
+        String source = lookupQuery ? "${table} enum_lookup" : table
+        String displayColumn = lookupQuery ? "enum_lookup.${display}" : display
+        String valueColumn = lookupQuery ? "enum_lookup.${value}" : value
+        return '(select first('+displayColumn+') from '+source+' where '+valueColumn+' = '+identifier+')'
     }
 
     String queryForEnumerationValues(String catalogName, String schemaName, String tableName, String columnName, String codeValue, String description, long MAX_ENUMERATION_VALUES){

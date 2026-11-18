@@ -68,6 +68,9 @@ class OracleCommand implements Runnable {
     @Option(names = ['-j', '--enum-ignore-column-like'], description = 'Match using LIKE of column names to ignore when detecting enumerations', required = false)
     List<String> enumIgnoreColumnLike
 
+    @Option(names = ['--yaml-config'], description = 'Vendor-targeted YAML import policy file')
+    String yamlConfigPath
+
     @Option(names = ['-o', '--output'], description = 'Output file', required = false)
     Path output
 
@@ -92,7 +95,8 @@ class OracleCommand implements Runnable {
             enumGivenAdornment: enumGivenAdornment,
             enumIgnoreColumn: enumIgnoreColumn,
             enumIgnoreColumnLike: enumIgnoreColumnLike,
-            enumLookupTable: enumLookupTable
+            enumLookupTable: enumLookupTable,
+            yamlConfigPath: yamlConfigPath
         )
 
         ApplicationContext applicationContext = ApplicationContext.run()

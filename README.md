@@ -77,8 +77,46 @@ Extract metadata from SQLServer schema
   -V, --version           Print version information and exit.
 ```
 
-Example:
+For test container setup and database-specific CLI examples, see the
+[SQL Server](docker/sqlserver/README.md) and [Oracle](docker/oracle/README.md)
+instructions.
 
-```bash
-./gradlew run --args='-d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json'
+### Vendor-targeted import YAML
+
+Pass `--yaml-config /path/to/sqlserver-import.yaml` to the CLI, or set
+`yamlConfigPath` on the importer parameters. Keep one configuration file per
+database vendor because lookup tables and SQL expressions can be vendor-specific.
+Rules are case-insensitive regular expressions matched against complete schema,
+table, and column names. Matching rules are applied in file order; later options
+override earlier ones. Use `$` for schema or table defaults.
+
+```yaml
+'.*':
+  '.*':
+    '.*':
+      enumerationIfLowCardinalityHeuristic: true
+    '.*_(Name|Id|Date)':
+      enumerationIfLowCardinalityHeuristic: false
+    status_code:
+      enumeration: true
+      enumLookupTable: reference.status_lookup
+      enumDisplayColumn: display_name
+      enumCodeColumn: code
+      enumLookupEnabled: true
+    person_key:
+      countIdentifier: true
+      countLabel: patient identifier
+  audit_.*:
+    $:
+      exclude: true
 ```
+
+Supported rules include `exclude`, `enumeration`,
+`enumerationIfLowCardinalityHeuristic`, `enumLookupEnabled`,
+`enumLookupTable`, `enumDisplayColumn`, `enumCodeColumn`, `countIdentifier`,
+and `countLabel`. The first imported column marked `countIdentifier: true` is
+used. Its distinct count and configured `countLabel` are emitted as plugin
+metadata on the table; ordinary row counts and distinct column counts remain
+available. Lookup table identifiers and any lookup SQL must be valid for the
+selected vendor. Source comments/descriptions are retained at catalog, schema,
+table, and column levels where the database exposes them.

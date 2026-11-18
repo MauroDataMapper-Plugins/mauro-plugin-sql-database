@@ -6,13 +6,20 @@ Run these commands in order. Press the play icon if you are using IntelliJ
 ```
 # Running
 ```bash
-   docker run --rm -it -p 1521:1521 -e ORACLE_PWD='BOpVnzFi9Ew=1' oracle-free-with-sqlplus
+   docker run --rm -d --name oracle-free-with-sqlplus -p 1521:1521 -e ORACLE_PWD='BOpVnzFi9Ew=1' oracle-free-with-sqlplus
 ```
-If all has gone well, you should see the sqlplus prompt in the terminal.
-You may have to press enter to see it
+The image starts Oracle using its built-in entrypoint. Follow the logs until
+the database reports `DATABASE IS READY TO USE!`:
 
-```text
-SQL> 
+```bash
+   docker logs -f oracle-free-with-sqlplus
+```
+
+The `create_metadata_simple.sql` startup script is run by the image when the
+database starts. Open a SQL*Plus prompt in another terminal with:
+
+```bash
+   docker exec -it oracle-free-with-sqlplus sqlplus / as sysdba
 ```
 
 Test it has worked with: TODO:
@@ -30,13 +37,14 @@ SQL> SELECT * FROM organisation;
 ...
 ```
 
-# To run from the command line
-
-Command line / run configurations
+# To run the importer from Gradle
 
 ```bash
-    java \
-      -cp mauro-plugin-sql-database.main \
-      org.maurodata.plugin.sql.database.oracle.OracleCommand \
-      -d FREEPDB1 -u metadata_simple -p "BOpVnzFi9Ew=1" -o oracle.json
+./gradlew :cli:runOracle --args='-d FREEPDB1 -u metadata_simple -p "BOpVnzFi9Ew=1" -o oracle.json'
+```
+
+Stop and remove the container when finished:
+
+```bash
+docker stop oracle-free-with-sqlplus
 ```

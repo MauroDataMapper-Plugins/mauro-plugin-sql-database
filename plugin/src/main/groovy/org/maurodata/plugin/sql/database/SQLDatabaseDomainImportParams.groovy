@@ -9,6 +9,11 @@ import groovy.transform.AutoClone
 @AutoClone
 class SQLDatabaseDomainImportParams extends ImportParameters {
 
+    @ImportParameterConfig(displayName = 'Vendor-targeted YAML import configuration', order = 12, optional = true,
+        group = @ImportGroupConfig(name = 'Source', order = 1),
+        description = ['Path to a YAML policy file written for the selected database vendor'])
+    String yamlConfigPath
+
     @ImportParameterConfig(
         displayName = 'Catalog (Database, Service Name) Name(s)',
         description = [
