@@ -77,11 +77,9 @@ Extract metadata from SQLServer schema
   -V, --version           Print version information and exit.
 ```
 
-Example:
-
-```bash
-./gradlew run --args='-d metadata_simple -u sa -p "YourStrong!Passw0rd" -o sqlserver.json'
-```
+For test container setup and database-specific CLI examples, see the
+[SQL Server](docker/sqlserver/README.md) and [Oracle](docker/oracle/README.md)
+instructions.
 
 ### Vendor-targeted import YAML
 

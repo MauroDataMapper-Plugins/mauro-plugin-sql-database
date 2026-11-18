@@ -67,9 +67,23 @@ application {
     applicationDefaultJvmArgs = ['--add-opens=java.base/java.nio=ALL-UNNAMED']
 }
 
-tasks.named("run", JavaExec) {
+tasks.withType(JavaExec).configureEach {
     workingDir = rootProject.projectDir
     jvmArgs '--add-opens=java.base/java.nio=ALL-UNNAMED'
+}
+
+tasks.register('runSqlServer', JavaExec) {
+    group = 'application'
+    description = 'Run the SQL Server importer CLI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('org.maurodata.plugin.sql.database.cli.SQLServerCommand')
+}
+
+tasks.register('runOracle', JavaExec) {
+    group = 'application'
+    description = 'Run the Oracle importer CLI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set('org.maurodata.plugin.sql.database.oracle.OracleCommand')
 }
 
 tasks.withType(Jar).configureEach {
